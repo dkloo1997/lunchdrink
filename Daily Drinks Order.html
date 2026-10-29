@@ -1,0 +1,810 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Daily Drinks Order</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one order sheet. Summary strip on top, order rows on the left, top-up list on the right (stacks on phones). */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --field: #f5f8f9;
+  --ink: #15262c;
+  --muted: #55696f;
+  --line: #d2dce0;
+  --accent: #0f6b73;
+  --accent-ink: #ffffff;
+  --hot: #b6420f;
+  --hot-bg: #fde8dc;
+  --cold: #1b5cb8;
+  --cold-bg: #dfeafa;
+  --warn: #a15c00;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d191d; --surface: #142227; --field: #0f1c21; --ink: #e5eef0; --muted: #8fa3aa;
+    --line: #26383f; --accent: #54c4cc; --accent-ink: #08262a; --hot: #ff9a6b; --hot-bg: #3a2218;
+    --cold: #7db7ff; --cold-bg: #172c47; --warn: #f0b45a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d191d; --surface: #142227; --field: #0f1c21; --ink: #e5eef0; --muted: #8fa3aa;
+  --line: #26383f; --accent: #54c4cc; --accent-ink: #08262a; --hot: #ff9a6b; --hot-bg: #3a2218;
+  --cold: #7db7ff; --cold-bg: #172c47; --warn: #f0b45a; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+* { box-sizing: border-box; }
+.page {
+  max-width: 1040px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.9rem, 5vw, 2.6rem); letter-spacing: -0.025em; line-height: 1.05; text-wrap: balance; }
+.sub { margin: 8px 0 0; color: var(--muted); max-width: 46ch; }
+.chit { font-family: var(--font-mono); border: 1.5px dashed var(--line); border-radius: 6px; padding: 8px 14px; text-align: right; }
+.chit .wd { display: block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.chit .dt { display: block; font-size: 1.15rem; font-weight: 500; }
+
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.stat { padding: 16px 18px; min-width: 0; border-left: 1px solid var(--line); display: grid; gap: 4px; align-content: start; }
+.stat:first-child { border-left: 0; }
+.stat .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.stat .v { font-family: var(--font-display); font-weight: 700; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .v small { font-family: var(--font-mono); font-weight: 400; font-size: 0.8rem; color: var(--muted); margin-right: 4px; }
+.stat.hot .v { color: var(--hot); }
+.stat.cold .v { color: var(--cold); }
+.stat .note { font-size: 12.5px; color: var(--warn); min-height: 1.2em; }
+.linkbtn { justify-self: start; background: none; border: 0; padding: 0; font: inherit; font-size: 12.5px; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.fundform { display: flex; gap: 6px; flex-wrap: wrap; }
+.fundform input { width: 7.5rem; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.panelhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.panelhead h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; letter-spacing: -0.01em; }
+#status { font-size: 12.5px; color: var(--muted); }
+#status.err { color: var(--hot); }
+
+ul { list-style: none; margin: 0; padding: 0; }
+.cols, .row { display: grid; grid-template-columns: 8.5rem minmax(0, 1.3fr) auto minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 16px; }
+.cols { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding-block: 9px; border-bottom: 1px solid var(--line); }
+.row { border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.who { font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.tag { font-family: var(--font-mono); font-weight: 400; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+
+input[type="text"], input[type="number"], select {
+  width: 100%; min-width: 0; font: inherit; color: var(--ink); background: var(--field);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+}
+input::placeholder { color: var(--muted); opacity: 0.75; }
+input:disabled, select:disabled { opacity: 0.6; cursor: not-allowed; }
+select { cursor: pointer; text-overflow: ellipsis; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
+.toggle button { font: inherit; font-weight: 500; color: var(--muted); background: transparent; border: 0; padding: 9px 15px; cursor: pointer; min-width: 4.2rem; }
+.toggle button + button { border-left: 1px solid var(--line); }
+.toggle button[aria-pressed="true"].h { background: var(--hot-bg); color: var(--hot); font-weight: 600; }
+.toggle button[aria-pressed="true"].c { background: var(--cold-bg); color: var(--cold); font-weight: 600; }
+.toggle button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.addform { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px; border-top: 1px dashed var(--line); }
+.addform input { flex: 1 1 12rem; }
+
+aside .panel ul li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+aside .panel ul li:last-child { border-bottom: 0; }
+aside .amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+aside .foot { display: flex; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--line); font-weight: 600; }
+aside .foot span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+aside p { margin: 0; padding: 12px 16px 0; color: var(--muted); font-size: 13px; }
+#fallback { width: 100%; min-height: 8rem; margin: 0 16px 14px; max-width: calc(100% - 32px); font: 13px var(--font-mono); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+
+#order-view, #summary-view { display: grid; gap: 20px; }
+aside .panel ul.tu li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+aside .panel ul.tu li.empty { display: block; color: var(--muted); }
+.tu .nm { overflow-wrap: anywhere; font-weight: 500; }
+.tuctl { display: grid; gap: 10px; padding: 12px 16px 14px; border-top: 1px solid var(--line); }
+.row2 { display: flex; gap: 8px; }
+.row2 input { flex: 1 1 auto; }
+.row2 input[type="number"] { flex: 0 0 5.2rem; width: 5.2rem; }
+.btn.sm { padding: 6px 11px; font-size: 13.5px; white-space: nowrap; }
+.paidbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.xbtn { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-size: 19px; line-height: 1; padding: 2px 6px; }
+.xbtn:hover { color: var(--hot); }
+.xbtn:disabled { cursor: not-allowed; opacity: 0.5; }
+.acts { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.finish { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; padding: 14px 16px; border-top: 1px solid var(--line); }
+.btn.danger { color: var(--hot); border-color: var(--hot); }
+.sumbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.sumbar h2 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; letter-spacing: -0.02em; }
+.hint { font-size: 12.5px; color: var(--muted); }
+.lines li { display: grid; grid-template-columns: 3.6rem minmax(0, 1.2fr) minmax(0, 1fr); gap: 4px 16px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.lines li:last-child { border-bottom: 0; }
+.qty { font-family: var(--font-display); font-weight: 700; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.dname { font-weight: 600; font-size: 1.05rem; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; color: var(--muted); font-size: 13.5px; align-items: center; }
+.pill { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 4px; padding: 2px 7px; }
+.pill.hot { background: var(--hot-bg); color: var(--hot); }
+.pill.cold { background: var(--cold-bg); color: var(--cold); }
+.pill.none { border: 1px dashed var(--line); color: var(--muted); }
+.names { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.empty { display: block !important; color: var(--muted); }
+.sumgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.totals li { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.totals li:last-child { border-bottom: 0; }
+.totals li.empty { color: var(--muted); }
+.thead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.thead b { font-family: var(--font-display); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.pending { margin: 0; padding: 14px 16px; color: var(--ink); overflow-wrap: anywhere; }
+#sfallback { width: 100%; min-height: 9rem; font: 13px var(--font-mono); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.drink, .remarks { display: grid; gap: 6px; min-width: 0; }
+.localbar { border: 1.5px solid var(--warn); border-radius: 10px; background: var(--surface); padding: 12px 16px; font-size: 14px; }
+.localbar strong { color: var(--warn); }
+.need { font-size: 12.5px; font-weight: 500; color: var(--warn); }
+.toggle.needs { border-color: var(--warn); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 12.5px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.chip:disabled { opacity: 0.6; cursor: not-allowed; }
+@media (max-width: 899px) { .main { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 719px) {
+  .sumgrid { grid-template-columns: minmax(0, 1fr); }
+  .lines li { grid-template-columns: 3rem minmax(0, 1fr); }
+  .lines li .names { grid-column: 2; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .cols { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who toggle" "drink drink" "remarks remarks"; gap: 8px 12px; padding-block: 14px; }
+  .row .who { grid-area: who; } .row .toggle { grid-area: toggle; }
+  .row .drink { grid-area: drink; } .row .remarks { grid-area: remarks; }
+  .chit { text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .toggle button, input { transition: background-color 0.15s, color 0.15s, border-color 0.15s; } }
+</style>
+
+<div class="page">
+  <header>
+    <div>
+      <h1>Daily Drinks Order</h1>
+      <p class="sub">Everyone adds their own drink here. Whoever is buying presses Next to see the full summary, which updates live.</p>
+    </div>
+    <div class="chit" aria-label="Order date"><span class="wd" id="wd">Today</span><span class="dt" id="dt">--/--/----</span></div>
+  </header>
+
+  <div class="localbar" id="localbar" role="status" hidden>
+    <strong>Not shared.</strong> This page can only save and share orders for people signed in to Claude with edit access. What you type here stays on this device. To order with the team, open the link signed in, or press Copy order and send it in your group chat.
+  </div>
+  <div id="order-view">
+  <section class="strip" aria-label="Order totals">
+    <div class="stat"><span class="k">Total cups</span><span class="v" id="t-cups">0</span><span class="note" id="t-note"></span></div>
+    <div class="stat hot"><span class="k">Hot</span><span class="v" id="t-hot">0</span></div>
+    <div class="stat cold"><span class="k">Cold</span><span class="v" id="t-cold">0</span></div>
+    <div class="stat">
+      <span class="k">Fund balance</span>
+      <span class="v" id="fund-v"><small>SGD</small>--</span>
+      <span class="note" id="fund-note"></span>
+      <button class="linkbtn" id="fund-edit" type="button" hidden>Edit balance</button>
+      <form class="fundform" id="fund-form" hidden>
+        <input type="number" id="fund-input" step="0.01" min="0" inputmode="decimal" aria-label="Fund balance in SGD">
+        <button class="btn" type="submit" id="fund-save">Save</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-labelledby="orders-h">
+      <div class="panelhead">
+        <h2 id="orders-h">Orders</h2>
+        <span id="status" role="status" aria-live="polite">Connecting...</span>
+        <span class="acts"><button class="btn ghost" type="button" id="copy">Copy order</button> <button class="btn go-summary" type="button" id="next-top">Next: see summary</button></span>
+      </div>
+      <div class="cols" aria-hidden="true"><span>Name</span><span>Drink</span><span>Hot / Cold</span><span>Special remarks</span></div>
+      <ul id="rows"></ul>
+      <form class="addform" id="add-form">
+        <input type="text" id="add-name" maxlength="40" placeholder="Someone not listed? Add a name" aria-label="Add a name" autocomplete="off">
+        <button class="btn ghost" type="submit" id="add-btn">Add name</button>
+      </form>
+      <div class="finish">
+        <button class="btn ghost danger" type="button" id="reset-all">Reset all orders</button>
+        <button class="btn go-summary" type="button" id="finish">Next: see summary</button>
+      </div>
+      <textarea id="fallback" readonly hidden aria-label="Order text to copy"></textarea>
+    </section>
+
+    <aside>
+      <section class="panel" aria-labelledby="top-h">
+        <div class="panelhead"><h2 id="top-h">Top-ups</h2><span class="hint" id="top-total">$0 of $0</span></div>
+        <p>When the fund is low, press Ask everyone. Tap Mark paid as each person pays. This list does not change the fund balance, so update that with Edit balance.</p>
+        <ul id="topups" class="tu"></ul>
+        <div class="tuctl">
+          <div class="row2">
+            <input type="number" id="tu-amount" value="5" min="1" step="1" inputmode="decimal" aria-label="Top-up amount in dollars">
+            <button class="btn ghost sm" type="button" id="tu-ask">Ask everyone</button>
+          </div>
+          <form class="row2" id="tu-form">
+            <input type="text" id="tu-name" maxlength="40" placeholder="Add a person" aria-label="Add a person to the top-up list" autocomplete="off">
+            <button class="btn ghost sm" type="submit" id="tu-add">Add</button>
+          </form>
+          <button class="linkbtn" type="button" id="tu-clear">Clear list</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+  </div>
+
+  <div id="summary-view" hidden>
+    <div class="sumbar">
+      <button class="btn ghost" type="button" id="back">Back to orders</button>
+      <h2 id="sum-h">Order summary</h2>
+      <button class="btn" type="button" id="copy-sum">Copy summary</button>
+    </div>
+    <section class="strip" aria-label="Summary totals">
+      <div class="stat"><span class="k">Total cups</span><span class="v" id="s-cups">0</span><span class="note" id="s-note"></span></div>
+      <div class="stat hot"><span class="k">Hot</span><span class="v" id="s-hot">0</span></div>
+      <div class="stat cold"><span class="k">Cold</span><span class="v" id="s-cold">0</span></div>
+      <div class="stat"><span class="k">Kinds of drink</span><span class="v" id="s-kinds">0</span></div>
+    </section>
+    <section class="panel" aria-labelledby="lines-h">
+      <div class="panelhead"><h2 id="lines-h">Drinks to order</h2><span class="hint">Same drink, same hot or cold, same remarks are added together.</span></div>
+      <ul class="lines" id="lines"></ul>
+    </section>
+    <div class="sumgrid">
+      <section class="panel" aria-labelledby="bd-h">
+        <div class="panelhead"><h2 id="bd-h">Totals by drink</h2></div>
+        <ul class="totals" id="by-drink"></ul>
+      </section>
+      <section class="panel" aria-labelledby="pn-h">
+        <div class="panelhead"><h2 id="pn-h">No drink chosen yet</h2></div>
+        <p class="pending" id="pending"></p>
+      </section>
+    </div>
+    <textarea id="sfallback" readonly hidden aria-label="Summary text to copy"></textarea>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ROSTER = ["Eugene", "CK", "DK", "Terrenze", "Ben", "Angel", "Angela", "KT", "Kendrick", "ML", "Ron", "Isaac", "Jason", "Others"];
+  var DRINKS = ["Teh", "Teh O", "Teh C", "Kopi", "Kopi O", "Kopi C", "Milo", "Yuanyang", "Lemon Tea", "100 Plus", "Coke Zero", "Coke", "Liangcha", "Sugar Cane", "Coconut Drink", "Sky Juice", "Fruit Juice", "Bubble Tea"];
+  var REMARKS = ["Less sweet", "No sugar", "Less ice", "No ice", "Strong", "Light"];
+  var LOW_AT = 5;   // fund counts as low at or below this many dollars
+  var ASK = 5;      // dollars asked per person when the fund is low
+  var TZ = "Asia/Singapore";
+  var now = new Date();
+  var iso = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  var p = iso.split("-");
+  var $ = function (id) { return document.getElementById(id); };
+  $("wd").textContent = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "long" }).format(now);
+  $("dt").textContent = p[2] + "/" + p[1] + "/" + p[0];
+
+  var BASE = "orders/" + iso + "/lines";
+  var money = new Intl.NumberFormat("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var rows = {};
+  var db = null, canWrite = false, connected = false, local = false;
+
+  // top-up round: one document per person in "topups"
+  var tus = {}, busy = {}, clearArmed = null;
+  function round2(n) { return Math.round(n * 100) / 100; }
+  function canEditTu() { return !!(db && connected && canWrite); }
+
+  function renderTopups() {
+    var ul = $("topups"); ul.innerHTML = "";
+    var list = Object.keys(tus).map(function (k) { return tus[k]; }).sort(function (a, b) {
+      return (a.paid === b.paid ? 0 : a.paid ? 1 : -1) || a.name.localeCompare(b.name);
+    });
+    var asked = 0, paid = 0;
+    list.forEach(function (t) { asked += t.amount; if (t.paid) paid += t.amount; });
+    $("top-total").textContent = "Paid $" + money.format(paid) + " of $" + money.format(asked);
+    if (!list.length) {
+      var e = document.createElement("li"); e.className = "empty"; e.textContent = "No top-up round yet."; ul.appendChild(e);
+    }
+    list.forEach(function (t) {
+      var li = document.createElement("li");
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = t.name;
+      var amt = document.createElement("span"); amt.className = "amt"; amt.textContent = "$" + money.format(t.amount);
+      var act = document.createElement("span"); act.className = "acts";
+      var pb = document.createElement("button"); pb.type = "button"; pb.className = "btn ghost sm paidbtn";
+      pb.id = "p-" + t.slug; pb.setAttribute("aria-pressed", t.paid ? "true" : "false");
+      pb.textContent = t.paid ? "Paid" : "Mark paid"; pb.disabled = !canEditTu() || !!busy[t.slug];
+      pb.addEventListener("click", function () { setPaid(t); });
+      act.appendChild(pb);
+      if (!t.paid) {
+        var xb = document.createElement("button"); xb.type = "button"; xb.className = "xbtn"; xb.id = "x-tu-" + t.slug;
+        xb.textContent = "×"; xb.setAttribute("aria-label", "Remove " + t.name + " from the top-up list"); xb.disabled = !canEditTu();
+        xb.addEventListener("click", function () { removeTu(t); });
+        act.appendChild(xb);
+      }
+      li.appendChild(nm); li.appendChild(amt); li.appendChild(act); ul.appendChild(li);
+    });
+    ["tu-amount", "tu-ask", "tu-name", "tu-add", "tu-clear"].forEach(function (id) { $(id).disabled = !canEditTu(); });
+  }
+
+  function tuFail() { setStatus("err", "Could not save the top-up. Check your connection and try again."); }
+
+  function setPaid(t) {
+    if (!canEditTu() || busy[t.slug]) return;
+    busy[t.slug] = true; renderTopups();
+    var next = !t.paid;
+    db.doc("topups/" + t.slug).set({ name: t.name, amount: t.amount, paid: next, paidAt: next ? Date.now() : 0 })
+      .catch(tuFail)
+      .then(function () { busy[t.slug] = false; renderTopups(); });
+  }
+
+  function removeTu(t) {
+    if (!canEditTu() || t.paid) return;
+    db.doc("topups/" + t.slug).delete().catch(tuFail);
+  }
+
+  function tuAmount() {
+    var v = parseFloat($("tu-amount").value);
+    return isFinite(v) && v > 0 ? round2(v) : null;
+  }
+
+  function addTu(name, amount) {
+    var slug = slugify(name);
+    if (!slug || tus[slug]) return Promise.resolve();
+    return db.doc("topups/" + slug).set({ name: name, amount: amount, paid: false, paidAt: 0 }).catch(tuFail);
+  }
+
+  $("tu-ask").addEventListener("click", function () {
+    if (!canEditTu()) return;
+    var a = tuAmount();
+    if (a === null) { $("tu-amount").focus(); return; }
+    ROSTER.filter(function (n) { return n !== "Others"; }).forEach(function (n) { addTu(n, a); });
+  });
+  $("tu-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!canEditTu()) return;
+    var a = tuAmount(), n = $("tu-name").value.trim();
+    if (a === null) { $("tu-amount").focus(); return; }
+    if (!n) return;
+    $("tu-name").value = "";
+    addTu(n, a);
+  });
+  $("tu-clear").addEventListener("click", function () {
+    if (!canEditTu()) return;
+    var b = $("tu-clear");
+    if (!clearArmed) {
+      b.textContent = "Tap again to clear the whole list";
+      clearArmed = setTimeout(function () { clearArmed = null; b.textContent = "Clear list"; }, 4000);
+      return;
+    }
+    clearTimeout(clearArmed); clearArmed = null; b.textContent = "Clear list";
+    Object.keys(tus).forEach(function (k) { db.doc("topups/" + k).delete().catch(tuFail); });
+  });
+
+  function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60); }
+  function same(a, b) { return a.drink === b.drink && a.temp === b.temp && a.remarks === b.remarks && a.name === b.name; }
+
+  function setStatus(kind, text) {
+    var s = $("status");
+    s.className = kind === "err" ? "err" : "";
+    s.textContent = text;
+  }
+
+  function makeRow(name, slugOverride) {
+    var slug = slugOverride || slugify(name);
+    if (!slug) return null;
+    if (rows[slug]) return rows[slug];
+    var li = document.createElement("li"); li.className = "row";
+    var who = document.createElement("span"); who.className = "who";
+    var nm = document.createElement("span"); nm.textContent = name; who.appendChild(nm);
+    var drink = document.createElement("select");
+    drink.id = "d-" + slug; drink.className = "pick"; drink.setAttribute("aria-label", name + " drink");
+    var none = document.createElement("option"); none.value = ""; none.textContent = "Choose a drink"; drink.appendChild(none);
+    DRINKS.forEach(function (d) { var o = document.createElement("option"); o.value = d; o.textContent = d; drink.appendChild(o); });
+    var oth = document.createElement("option"); oth.value = "__other"; oth.textContent = "Other (type it in)"; drink.appendChild(oth);
+    var custom = document.createElement("input");
+    custom.type = "text"; custom.id = "x-" + slug; custom.className = "custom"; custom.placeholder = "Type the drink"; custom.maxLength = 80;
+    custom.autocomplete = "off"; custom.hidden = true; custom.setAttribute("aria-label", name + " other drink");
+    var dcell = document.createElement("div"); dcell.className = "drink"; dcell.appendChild(drink); dcell.appendChild(custom);
+    var need = document.createElement("span"); need.className = "need"; need.textContent = "Please pick Hot or Cold for this drink."; need.hidden = true;
+    need.setAttribute("role", "status"); dcell.appendChild(need);
+    var tog = document.createElement("div"); tog.className = "toggle"; tog.setAttribute("role", "group"); tog.setAttribute("aria-label", name + " hot or cold");
+    var hot = document.createElement("button"); hot.type = "button"; hot.className = "h"; hot.textContent = "Hot"; hot.id = "h-" + slug;
+    var cold = document.createElement("button"); cold.type = "button"; cold.className = "c"; cold.textContent = "Cold"; cold.id = "c-" + slug;
+    tog.appendChild(hot); tog.appendChild(cold);
+    var rem = document.createElement("input");
+    rem.type = "text"; rem.id = "r-" + slug; rem.className = "rin"; rem.placeholder = "Remarks, or tap below"; rem.maxLength = 120;
+    rem.autocomplete = "off"; rem.setAttribute("aria-label", name + " special remarks");
+    var chipsBox = document.createElement("div"); chipsBox.className = "chips"; var chips = [];
+    REMARKS.forEach(function (t) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = t;
+      b.id = "k-" + slug + "-" + slugify(t); b.setAttribute("aria-pressed", "false");
+      chipsBox.appendChild(b); chips.push(b);
+    });
+    var rcell = document.createElement("div"); rcell.className = "remarks"; rcell.appendChild(rem); rcell.appendChild(chipsBox);
+    li.appendChild(who); li.appendChild(dcell); li.appendChild(tog); li.appendChild(rcell);
+    $("rows").appendChild(li);
+
+    var row = { name: name, slug: slug, drink: "", temp: "", remarks: "", saved: null, timer: null, inflight: false, dirty: false, els: { drink: drink, custom: custom, need: need, hot: hot, cold: cold, rem: rem, chips: chips } };
+    rows[slug] = row;
+    drink.addEventListener("change", function () {
+      if (drink.value === "__other") { custom.hidden = false; row.drink = custom.value; changed(row, 0); custom.focus(); }
+      else { custom.hidden = true; custom.value = ""; row.drink = drink.value; changed(row, 0); }
+    });
+    custom.addEventListener("input", function () { row.drink = custom.value; changed(row, 700); });
+    rem.addEventListener("input", function () { row.remarks = rem.value; chipsUI(row); changed(row, 700); });
+    chips.forEach(function (b, i) {
+      b.addEventListener("click", function () {
+        var parts = row.remarks.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+        var at = parts.indexOf(REMARKS[i]);
+        if (at === -1) parts.push(REMARKS[i]); else parts.splice(at, 1);
+        row.remarks = parts.join(", "); rem.value = row.remarks; chipsUI(row); changed(row, 0);
+      });
+    });
+    hot.addEventListener("click", function () { row.temp = row.temp === "hot" ? "" : "hot"; tempUI(row); changed(row, 0); });
+    cold.addEventListener("click", function () { row.temp = row.temp === "cold" ? "" : "cold"; tempUI(row); changed(row, 0); });
+    controls(row).forEach(function (e) { e.disabled = !(local || (connected && canWrite)); });
+    return row;
+  }
+
+  function needUI(row) {
+    var missing = !!row.drink.trim() && !row.temp;
+    row.els.need.hidden = !missing;
+    row.els.hot.parentNode.classList.toggle("needs", missing);
+  }
+  function controls(row) {
+    return [row.els.drink, row.els.custom, row.els.rem, row.els.hot, row.els.cold].concat(row.els.chips);
+  }
+  function drinkUI(row) {
+    var v = row.drink, sel = row.els.drink, cu = row.els.custom;
+    if (!v) { sel.value = ""; cu.hidden = true; cu.value = ""; }
+    else if (DRINKS.indexOf(v) !== -1) { sel.value = v; cu.hidden = true; cu.value = ""; }
+    else { sel.value = "__other"; cu.hidden = false; cu.value = v; }
+  }
+  function chipsUI(row) {
+    var parts = row.remarks.split(",").map(function (s) { return s.trim(); });
+    row.els.chips.forEach(function (b, i) { b.setAttribute("aria-pressed", parts.indexOf(REMARKS[i]) !== -1 ? "true" : "false"); });
+  }
+  function tempUI(row) {
+    row.els.hot.setAttribute("aria-pressed", row.temp === "hot" ? "true" : "false");
+    row.els.cold.setAttribute("aria-pressed", row.temp === "cold" ? "true" : "false");
+  }
+
+  function changed(row, delay) {
+    updateTotals();
+    clearTimeout(row.timer);
+    row.timer = setTimeout(function () { flush(row); }, delay);
+  }
+
+  function flush(row) {
+    row.timer = null;
+    if (!db || !canWrite) return Promise.resolve();
+    if (row.inflight) { row.dirty = true; return Promise.resolve(); }
+    var data = { name: row.name, drink: row.drink.trim(), temp: row.temp, remarks: row.remarks.trim() };
+    if (row.saved && same(row.saved, data)) { setStatus("ok", "All changes saved"); return Promise.resolve(); }
+    row.inflight = true;
+    setStatus("ok", "Saving...");
+    return db.doc(BASE + "/" + row.slug).set({ name: data.name, drink: data.drink, temp: data.temp, remarks: data.remarks, updatedAt: Date.now() })
+      .then(function () { row.saved = data; setStatus("ok", "All changes saved"); })
+      .catch(function () { setStatus("err", "Could not save. Check your connection and try again."); })
+      .then(function () {
+        row.inflight = false;
+        if (row.dirty) { row.dirty = false; flush(row); }
+      });
+  }
+
+  function apply(row, data) {
+    if (row.timer || row.inflight || row.dirty) return;
+    var f = {
+      drink: typeof data.drink === "string" ? data.drink : "",
+      temp: data.temp === "hot" || data.temp === "cold" ? data.temp : "",
+      remarks: typeof data.remarks === "string" ? data.remarks : ""
+    };
+    var ae = document.activeElement;
+    if (ae !== row.els.drink && ae !== row.els.custom) { row.drink = f.drink; drinkUI(row); }
+    if (document.activeElement !== row.els.rem) { row.remarks = f.remarks; row.els.rem.value = f.remarks; }
+    chipsUI(row);
+    row.temp = f.temp; tempUI(row);
+    row.saved = { name: row.name, drink: f.drink.trim(), temp: f.temp, remarks: f.remarks.trim() };
+    updateTotals();
+  }
+
+  function updateTotals() {
+    var cups = 0, hot = 0, cold = 0, missing = 0;
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k];
+      needUI(r);
+      if (r.drink.trim()) {
+        cups++;
+        if (r.temp === "hot") hot++; else if (r.temp === "cold") cold++; else missing++;
+      }
+    });
+    $("t-cups").textContent = cups; $("t-hot").textContent = hot; $("t-cold").textContent = cold;
+    $("t-note").textContent = missing ? missing + (missing === 1 ? " cup" : " cups") + " without hot or cold" : "";
+    if (!$("summary-view").hidden) renderSummary();
+  }
+
+  // summary page
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function cleanRem(s) { return s.split(",").map(function (x) { return x.trim(); }).filter(Boolean); }
+  function tempLabel(t) { return t === "hot" ? "Hot" : t === "cold" ? "Cold" : ""; }
+
+  function buildSummary() {
+    var groups = {}, byDrink = {}, none = [], cups = 0, hot = 0, cold = 0, missing = 0;
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k], d = r.drink.trim();
+      if (!d) { if (r.name !== "Others") none.push(r.name); return; }
+      cups++;
+      if (r.temp === "hot") hot++; else if (r.temp === "cold") cold++; else missing++;
+      var rem = cleanRem(r.remarks);
+      var key = d.toLowerCase() + "|" + r.temp + "|" + rem.map(function (x) { return x.toLowerCase(); }).sort().join(",");
+      var g = groups[key] || (groups[key] = { drink: d, temp: r.temp, rem: rem, n: 0, who: [] });
+      g.n++; g.who.push(r.name);
+      var dk = d.toLowerCase();
+      var b = byDrink[dk] || (byDrink[dk] = { name: d, n: 0, hot: 0, cold: 0, none: 0, rem: {} });
+      b.n++;
+      if (r.temp === "hot") b.hot++; else if (r.temp === "cold") b.cold++; else b.none++;
+      rem.forEach(function (x) {
+        var rk = x.toLowerCase();
+        var e = b.rem[rk] || (b.rem[rk] = { text: x, n: 0 });
+        e.n++;
+      });
+    });
+    var lines = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (a, b) {
+      return b.n - a.n || a.drink.localeCompare(b.drink) || a.temp.localeCompare(b.temp);
+    });
+    var totals = Object.keys(byDrink).map(function (k) { return byDrink[k]; }).sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name); });
+    return { lines: lines, totals: totals, none: none, cups: cups, hot: hot, cold: cold, missing: missing };
+  }
+
+  function renderSummary() {
+    var s = buildSummary();
+    $("s-cups").textContent = s.cups; $("s-hot").textContent = s.hot; $("s-cold").textContent = s.cold; $("s-kinds").textContent = s.totals.length;
+    $("s-note").textContent = s.missing ? s.missing + (s.missing === 1 ? " cup" : " cups") + " without hot or cold" : "";
+    var ul = $("lines"); ul.innerHTML = "";
+    if (!s.lines.length) { ul.appendChild(el("li", "empty", "No drinks chosen yet. Go back and pick a drink for each name.")); }
+    s.lines.forEach(function (g) {
+      var li = el("li");
+      li.appendChild(el("span", "qty", String(g.n)));
+      var mid = el("div");
+      mid.appendChild(el("div", "dname", g.drink));
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", "pill " + (g.temp || "none"), g.temp ? tempLabel(g.temp) : "Hot or cold not set"));
+      if (g.rem.length) meta.appendChild(el("span", "", g.rem.join(", ")));
+      mid.appendChild(meta);
+      li.appendChild(mid);
+      li.appendChild(el("span", "names", g.who.join(", ")));
+      ul.appendChild(li);
+    });
+    var bd = $("by-drink"); bd.innerHTML = "";
+    if (!s.totals.length) bd.appendChild(el("li", "empty", "Nothing yet."));
+    s.totals.forEach(function (t) {
+      var li = el("li");
+      var head = el("div", "thead");
+      head.appendChild(el("span", "dname", t.name));
+      head.appendChild(el("b", "", "x " + t.n));
+      li.appendChild(head);
+      var meta = el("div", "meta");
+      if (t.hot) meta.appendChild(el("span", "pill hot", "Hot " + t.hot));
+      if (t.cold) meta.appendChild(el("span", "pill cold", "Cold " + t.cold));
+      if (t.none) meta.appendChild(el("span", "pill none", "Not set " + t.none));
+      var rems = Object.keys(t.rem).map(function (k) { return t.rem[k]; }).sort(function (a, b) { return b.n - a.n || a.text.localeCompare(b.text); });
+      rems.forEach(function (x) { meta.appendChild(el("span", "", x.text + " x" + x.n)); });
+      li.appendChild(meta);
+      bd.appendChild(li);
+    });
+    $("pending").textContent = s.none.length ? s.none.join(", ") : "Everyone listed has chosen a drink.";
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".go-summary"), function (b) {
+    b.addEventListener("click", function () { location.hash = "summary"; });
+  });
+  $("back").addEventListener("click", function () { location.hash = "orders"; });
+  $("copy-sum").addEventListener("click", function () {
+    var s = buildSummary();
+    var out = ["Daily Drinks Order summary, " + $("wd").textContent + " " + $("dt").textContent];
+    s.lines.forEach(function (g) {
+      var extra = [];
+      if (g.temp) extra.push(tempLabel(g.temp));
+      g.rem.forEach(function (x) { extra.push(x); });
+      out.push(g.n + " x " + g.drink + (extra.length ? " (" + extra.join(", ") + ")" : "") + " - " + g.who.join(", "));
+    });
+    if (!s.lines.length) out.push("No orders yet");
+    out.push("Total " + s.cups + " (Hot " + s.hot + ", Cold " + s.cold + ")");
+    var text = out.join("\n"), fb = $("sfallback");
+    function showFallback() { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); }
+    try { navigator.clipboard.writeText(text).then(function () { fb.hidden = true; $("copy-sum").textContent = "Copied"; setTimeout(function () { $("copy-sum").textContent = "Copy summary"; }, 2000); }, showFallback); }
+    catch (err) { showFallback(); }
+  });
+
+  function route() {
+    var on = location.hash === "#summary";
+    $("order-view").hidden = on; $("summary-view").hidden = !on;
+    if (on) renderSummary();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+
+  ROSTER.forEach(function (n) { var r = makeRow(n); tempUI(r); });
+
+  // add a name
+  $("add-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!local && (!db || !canWrite)) return;
+    var name = $("add-name").value.trim();
+    if (!name) return;
+    var existing = rows[slugify(name)];
+    var row = existing || makeRow(name);
+    if (!row) return;
+    tempUI(row);
+    $("add-name").value = "";
+    if (!existing) { row.saved = null; flush(row); }
+    row.els.drink.focus();
+  });
+
+  // copy order
+  $("copy").addEventListener("click", function () {
+    var lines = [], cups = 0, hot = 0, cold = 0;
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k];
+      if (!r.drink.trim()) return;
+      cups++; if (r.temp === "hot") hot++; if (r.temp === "cold") cold++;
+      var parts = [r.name + ": " + r.drink.trim()];
+      if (r.temp) parts.push(r.temp === "hot" ? "Hot" : "Cold");
+      if (r.remarks.trim()) parts.push(r.remarks.trim());
+      lines.push(parts.join(" | "));
+    });
+    var text = "Daily Drinks Order, " + $("wd").textContent + " " + $("dt").textContent + "\n" + (lines.length ? lines.join("\n") : "No orders yet") + "\nTotal " + cups + " (Hot " + hot + ", Cold " + cold + ")";
+    var fb = $("fallback");
+    function showFallback() { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); setStatus("ok", "Press Ctrl+C or Cmd+C to copy."); }
+    try {
+      navigator.clipboard.writeText(text).then(function () { fb.hidden = true; setStatus("ok", "Order copied"); }, showFallback);
+    } catch (err) { showFallback(); }
+  });
+
+  // fund
+  var fund = null;
+  function renderFund() {
+    $("fund-v").innerHTML = "";
+    var sm = document.createElement("small"); sm.textContent = "SGD";
+    $("fund-v").appendChild(sm);
+    $("fund-v").appendChild(document.createTextNode(fund === null ? "--" : money.format(fund)));
+    $("fund-note").textContent = fund !== null && fund <= LOW_AT ? "Fund is low. Ask for $" + ASK + " top-ups." : "";
+    $("fund-edit").textContent = fund === null ? "Set balance" : "Edit balance";
+    $("fund-edit").hidden = !(connected && canWrite) || !$("fund-form").hidden;
+  }
+  $("fund-edit").addEventListener("click", function () {
+    $("fund-form").hidden = false; $("fund-edit").hidden = true;
+    $("fund-input").value = fund === null ? "" : fund.toFixed(2);
+    $("fund-input").focus();
+  });
+  $("fund-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = parseFloat($("fund-input").value);
+    if (!isFinite(v) || v < 0) { $("fund-input").focus(); return; }
+    v = Math.round(v * 100) / 100;
+    $("fund-save").disabled = true;
+    db.doc("meta/fund").set({ balance: v, updatedAt: Date.now() })
+      .then(function () { fund = v; })
+      .catch(function () { setStatus("err", "Could not save the balance. Try again."); })
+      .then(function () { $("fund-save").disabled = false; $("fund-form").hidden = true; renderFund(); });
+  });
+
+  function setEditable(on) {
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k];
+      controls(r).forEach(function (e) { e.disabled = !on; });
+    });
+    $("add-name").disabled = !on; $("add-btn").disabled = !on; $("reset-all").disabled = !on;
+  }
+  setEditable(false);
+  renderFund();
+  renderTopups();
+
+  // Outside Claude (or signed out) the shared store is not available: let people type locally and say so.
+  function enterLocal() {
+    local = true;
+    setEditable(true);
+    $("reset-all").disabled = true;
+    $("localbar").hidden = false;
+    setStatus("err", "Not shared. Entries stay on this device.");
+  }
+
+  function start(dbm, um) {
+    db = dbm; connected = !!dbm;
+    var allowed = um && um.can ? um.can("data.write") : null;
+    canWrite = connected && allowed !== false;
+    if (!connected) { enterLocal(); return; }
+    setEditable(canWrite);
+    setStatus("ok", canWrite ? "Live. Changes save automatically." : "View only. Ask the owner for edit access to place an order.");
+    renderFund();
+    db.collection(BASE).onSnapshot(function (snap) {
+      var seen = {};
+      snap.docs.forEach(function (d) {
+        var data = d.data() || {};
+        var row = rows[d.id] || makeRow(typeof data.name === "string" && data.name ? data.name : d.id, d.id);
+        if (!row) return;
+        seen[d.id] = true;
+        apply(row, data);
+        if (!canWrite) { controls(row).forEach(function (e) { e.disabled = true; }); }
+      });
+      Object.keys(rows).forEach(function (k) {
+        if (seen[k] || !rows[k].saved) return;
+        apply(rows[k], {});
+        if (ROSTER.indexOf(rows[k].name) === -1) {
+          var li = rows[k].els.drink.closest("li");
+          if (li) li.remove();
+          delete rows[k];
+          updateTotals();
+        }
+      });
+    }, function () { setStatus("err", "Live updates stopped. Reload the page to reconnect."); });
+    renderTopups();
+    db.collection("topups").onSnapshot(function (snap) {
+      var next = {};
+      snap.docs.forEach(function (d) {
+        var x = d.data() || {};
+        if (typeof x.name !== "string" || !x.name) return;
+        next[d.id] = { slug: d.id, name: x.name, amount: typeof x.amount === "number" && x.amount > 0 ? x.amount : 20, paid: x.paid === true };
+      });
+      tus = next; renderTopups();
+    }, function () {});
+    db.doc("meta/fund").onSnapshot(function (s) {
+      var d = s.exists ? s.data() : null;
+      fund = d && typeof d.balance === "number" ? d.balance : null;
+      if ($("fund-form").hidden) renderFund();
+    }, function () { $("fund-note").textContent = "Could not load the balance. Reload the page."; });
+  }
+
+  // Reset all of today's orders (two taps to confirm). Fund balance and top-ups are not touched.
+  var resetArmed = null;
+  $("reset-all").addEventListener("click", function () {
+    if (!db || !canWrite) return;
+    var b = $("reset-all");
+    if (!resetArmed) {
+      b.textContent = "Tap again to reset all orders";
+      resetArmed = setTimeout(function () { resetArmed = null; b.textContent = "Reset all orders"; }, 4000);
+      return;
+    }
+    clearTimeout(resetArmed); resetArmed = null; b.textContent = "Reset all orders";
+    var failed = false;
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k];
+      if (!(r.saved || r.drink || r.temp || r.remarks)) return;
+      clearTimeout(r.timer); r.timer = null; r.dirty = false;
+      r.drink = ""; r.temp = ""; r.remarks = ""; r.els.rem.value = "";
+      drinkUI(r); tempUI(r); chipsUI(r);
+      r.saved = null;
+      db.doc(BASE + "/" + k).delete().catch(function () { if (!failed) { failed = true; setStatus("err", "Could not reset every order. Reload the page and try again."); } });
+      if (ROSTER.indexOf(r.name) === -1) {
+        var li = r.els.drink.closest("li");
+        if (li) li.remove();
+        delete rows[k];
+      }
+    });
+    updateTotals();
+    if (!failed) setStatus("ok", "All orders reset");
+  });
+
+  route();
+
+  // A page left open past midnight (Singapore time) loads the new day's blank sheet.
+  function checkNewDay() {
+    var today = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    if (today !== iso) location.reload();
+  }
+  setInterval(checkNewDay, 30000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkNewDay(); });
+
+  var c = window.claude;
+  if (c && c.use) {
+    Promise.all([c.use("db").catch(function () { return null; }), c.use("user").catch(function () { return null; })])
+      .then(function (r) { start(r[0], r[1]); });
+  } else {
+    enterLocal();
+  }
+})();
+</script>
+
+</body></html>
